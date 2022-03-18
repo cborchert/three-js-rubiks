@@ -1,13 +1,14 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
-import "./style.css";
 import px from "./textures/envMaps/1/px.jpg";
 import py from "./textures/envMaps/1/py.jpg";
 import pz from "./textures/envMaps/1/pz.jpg";
 import nx from "./textures/envMaps/1/nx.jpg";
 import ny from "./textures/envMaps/1/ny.jpg";
 import nz from "./textures/envMaps/1/nz.jpg";
+
+import "./style.css";
 
 /**
  * setup
@@ -71,6 +72,9 @@ const animationLoop = () => {
 };
 animationLoop();
 
+/**
+ * Objects
+ */
 const geometry = new THREE.BoxGeometry(0.95, 0.95, 0.95, 100, 100, 100);
 const materialsProps = {
   metalness: 0.8,

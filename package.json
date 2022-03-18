@@ -8,5 +8,8 @@
   },
   "dependencies": {
     "three": "^0.138.3"
+  },
+  "scripts": {
+    "dev": "parcel index.html"
   }
 }
