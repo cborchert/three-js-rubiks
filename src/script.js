@@ -129,7 +129,18 @@ const getSlice = (coordinate, value) => {
 let slice = ["x", "x", "x", "x", "y"];
 
 const rotate = (object, perspective, dX, dY) => {
-  console.log(object.face);
+  console.log({ object });
+  if (!object.face) return;
+  // todo learn more about vector math
+  const roundedNormal = object.face.normal.clone().round();
+  const draggedFace =
+    Math.abs(roundedNormal.x) === 1
+      ? "x"
+      : Math.abs(roundedNormal.y) === 1
+      ? "y"
+      : "z";
+  console.log(draggedFace);
+
   const sliceAxis = slice[0];
   const items = getSlice(sliceAxis, 1);
   slice.push(slice.shift());
