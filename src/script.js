@@ -9,6 +9,9 @@ import ny from "./textures/envMaps/1/ny.jpg";
 import nz from "./textures/envMaps/1/nz.jpg";
 
 import "./style.css";
+import _, { groupBy } from "lodash";
+
+const DRAG_THESHOLD = 0.02;
 
 /**
  * Materials
@@ -25,7 +28,7 @@ const materialsProps = {
   opacity: 1,
   envMap,
 };
-const materials = [
+const cubeMaterials = [
   new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[0] }), // right side
   new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[1] }), // left
   new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[2] }), // top
@@ -73,58 +76,6 @@ const setPerspective = () => {
 window.addEventListener("resize", setPerspective);
 setPerspective();
 
-// controller
-const controller = new OrbitControls(camera, canvas);
-controller.enableDamping = true;
-
-// ray caster + mouse
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-
-const onPointerMove = (event) => {
-  // calculate pointer position in normalized device coordinates => (-1 to +1) for both components
-  pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-  pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-};
-window.addEventListener("pointermove", onPointerMove);
-
-const cubes = new THREE.Group();
-let selectedCube;
-let groupX, groupY, groupZ;
-const castRays = () => {
-  // update the picking ray with the camera and pointer position
-  raycaster.setFromCamera(pointer, camera);
-
-  // calculate objects intersecting the picking ray and get the closest
-  const intersects = raycaster.intersectObjects(scene.children);
-  intersects.sort((a, b) => (a.distance < b.distance ? -1 : 1));
-  const newSelectedCube = intersects[0]?.object;
-  if (newSelectedCube !== selectedCube) {
-    if (selectedCube) {
-      selectedCube.material = materials;
-    }
-    selectedCube = newSelectedCube;
-    if (selectedCube) {
-      selectedCube.material = selectedMaterial;
-    }
-  }
-};
-
-const onMouseDown = () => {
-  console.log("clicked");
-  if (selectedCube) {
-    console.log("aha!");
-    controller.enabled = false;
-  }
-};
-window.addEventListener("mousedown", onMouseDown);
-
-const onMouseUp = () => {
-  console.log("unclicked");
-  controller.enabled = true;
-};
-window.addEventListener("mouseup", onMouseUp);
-
 // lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 1);
 
@@ -135,22 +86,16 @@ pointLight1.position.y = 10;
 scene.add(ambientLight, pointLight1);
 
 /**
- * Get animating
- */
-const animationLoop = () => {
-  controller.update();
-  castRays();
-  renderer.render(scene, camera);
-  requestAnimationFrame(animationLoop);
-};
-animationLoop();
-
-/**
  * Objects
  */
+const cubes = new THREE.Group();
 const geometry = new THREE.BoxGeometry(0.95, 0.95, 0.95, 100, 100, 100);
 for (let i = 0; i < 27; i++) {
-  const cube = new THREE.Mesh(geometry, materials);
+  const cube = new THREE.Mesh(
+    geometry,
+    i === 26 ? selectedMaterial : cubeMaterials
+  );
+  cube.special = i === 26;
   cube.position.y = (i % 3) - 1;
   cube.position.x = (Math.floor(i / 3) % 3) - 1;
   cube.position.z = Math.floor(i / 9) - 1;
@@ -158,3 +103,113 @@ for (let i = 0; i < 27; i++) {
 }
 
 scene.add(cubes);
+
+/**
+ * Controls
+ */
+
+// controller
+const controller = new OrbitControls(camera, canvas);
+controller.enableDamping = true;
+
+// ray caster + mouse
+let isDragging = false;
+let selectedObject;
+const raycaster = new THREE.Raycaster();
+const mousePosition = new THREE.Vector2();
+const initialMousePosition = new THREE.Vector2();
+
+const getSlice = (coordinate, value) => {
+  const slice = cubes.children.filter(
+    (child) => Math.round(child.position[coordinate]) === value
+  );
+  return slice;
+};
+
+let slice = ["x", "x", "x", "x", "y"];
+
+const rotate = (object, perspective, dX, dY) => {
+  console.log(object.face);
+  const sliceAxis = slice[0];
+  const items = getSlice(sliceAxis, 1);
+  slice.push(slice.shift());
+  const rotateGroup = new THREE.Group();
+  rotateGroup.add(...items);
+  rotateGroup.rotateOnWorldAxis(
+    new THREE.Vector3(
+      sliceAxis === "x" ? 1 : 0,
+      sliceAxis === "y" ? 1 : 0,
+      sliceAxis === "z" ? 1 : 0
+    ),
+    Math.PI / 2
+  );
+  rotateGroup.updateMatrixWorld();
+  rotateGroup.children.slice().forEach((child) => {
+    rotateGroup.remove(child);
+    cubes.add(child);
+    child.applyMatrix4(rotateGroup.matrixWorld);
+  });
+};
+
+const getPointedObject = () => {
+  // update the picking ray with the camera and pointer position
+  raycaster.setFromCamera(mousePosition, camera);
+
+  // calculate objects intersecting the picking ray and get the closest
+  const intersects = raycaster.intersectObjects(scene.children);
+  intersects.sort((a, b) => (a.distance < b.distance ? -1 : 1));
+  return intersects[0];
+};
+
+const getMousePosition = (event) => ({
+  // calculate pointer position in normalized device coordinates => (-1 to +1) for both components
+  x: (event.clientX / window.innerWidth) * 2 - 1,
+  y: -(event.clientY / window.innerHeight) * 2 + 1,
+});
+
+const onMouseMove = (event) => {
+  const { x, y } = getMousePosition(event);
+  // calculate pointer position in normalized device coordinates => (-1 to +1) for both components
+  mousePosition.x = x;
+  mousePosition.y = y;
+
+  if (selectedObject && !isDragging) {
+    const dX = mousePosition.x - initialMousePosition.x;
+    const dY = mousePosition.y - initialMousePosition.y;
+    const distance = Math.sqrt(dX * dX + dY * dY);
+    if (distance > DRAG_THESHOLD) {
+      isDragging = true;
+      rotate(selectedObject, camera, dX, dY);
+    }
+  }
+};
+window.addEventListener("mousemove", onMouseMove);
+
+const onMouseDown = (e) => {
+  const { x, y } = getMousePosition(event);
+  initialMousePosition.x = x;
+  initialMousePosition.y = y;
+
+  selectedObject = getPointedObject();
+  if (selectedObject) {
+    controller.enabled = false;
+  }
+};
+window.addEventListener("mousedown", onMouseDown);
+
+const onMouseUp = () => {
+  controller.enabled = true;
+  isDragging = false;
+  selectedObject = undefined;
+};
+window.addEventListener("mouseup", onMouseUp);
+
+/**
+ * Get animating
+ */
+const animationLoop = () => {
+  controller.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animationLoop);
+};
+animationLoop();
