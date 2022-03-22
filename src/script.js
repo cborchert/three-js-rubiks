@@ -36,11 +36,6 @@ const cubeMaterials = [
   new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[5] }), // back
 ];
 
-const selectedMaterial = new THREE.MeshStandardMaterial({
-  ...materialsProps,
-  color: 0x000000,
-});
-
 /**
  * setup
  */
@@ -87,10 +82,7 @@ scene.add(ambientLight, pointLight1);
 const cubes = new THREE.Group();
 const geometry = new THREE.BoxGeometry(0.95, 0.95, 0.95, 100, 100, 100);
 for (let i = 0; i < 27; i++) {
-  const cube = new THREE.Mesh(
-    geometry,
-    i === 26 ? selectedMaterial : cubeMaterials
-  );
+  const cube = new THREE.Mesh(geometry, cubeMaterials);
   cube.special = i === 26;
   cube.position.y = (i % 3) - 1;
   cube.position.x = (Math.floor(i / 3) % 3) - 1;
