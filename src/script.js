@@ -167,8 +167,8 @@ const getLongestComponent = (vector) => {
 };
 
 const onMouseMove = (event) => {
-  const { x, y } = getMousePosition(event);
   // calculate pointer position in normalized device coordinates => (-1 to +1) for both components
+  const { x, y } = getMousePosition(event);
   mousePosition.x = x;
   mousePosition.y = y;
 
@@ -237,10 +237,12 @@ const onMouseMove = (event) => {
 };
 window.addEventListener("pointermove", onMouseMove);
 
-const onMouseDown = (e) => {
+const onMouseDown = (event) => {
   const { x, y } = getMousePosition(event);
   initialMousePosition.x = x;
   initialMousePosition.y = y;
+  mousePosition.x = x;
+  mousePosition.y = y;
 
   selectedObject = getPointedObject();
   if (selectedObject) {
