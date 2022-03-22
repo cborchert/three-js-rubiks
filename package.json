@@ -1,7 +1,6 @@
 {
   "name": "rubiks",
   "version": "1.0.0",
-  "main": "index.js",
   "license": "MIT",
   "devDependencies": {
     "parcel": "^2.3.2"
