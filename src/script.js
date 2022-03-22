@@ -147,11 +147,13 @@ const getPointedObject = () => {
   return intersects[0];
 };
 
-const getMousePosition = (event) => ({
-  // calculate pointer position in normalized device coordinates => (-1 to +1) for both components
-  x: (event.clientX / window.innerWidth) * 2 - 1,
-  y: -(event.clientY / window.innerHeight) * 2 + 1,
-});
+const getMousePosition = (event) => {
+  return {
+    // calculate pointer position in normalized device coordinates => (-1 to +1) for both components
+    x: (event.clientX / window.innerWidth) * 2 - 1,
+    y: -(event.clientY / window.innerHeight) * 2 + 1,
+  };
+};
 
 const getLongestComponent = (vector) => {
   const x = Math.abs(vector.x);
@@ -229,7 +231,7 @@ const onMouseMove = (event) => {
     }
   }
 };
-window.addEventListener("mousemove", onMouseMove);
+window.addEventListener("pointermove", onMouseMove);
 
 const onMouseDown = (e) => {
   const { x, y } = getMousePosition(event);
@@ -245,14 +247,14 @@ const onMouseDown = (e) => {
     controller.enabled = false;
   }
 };
-window.addEventListener("mousedown", onMouseDown);
+window.addEventListener("pointerdown", onMouseDown);
 
 const onMouseUp = () => {
   controller.enabled = true;
   isDragging = false;
   selectedObject = undefined;
 };
-window.addEventListener("mouseup", onMouseUp);
+window.addEventListener("pointerup", onMouseUp);
 
 /**
  * Get animating
