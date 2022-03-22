@@ -9,7 +9,6 @@ import ny from "./textures/envMaps/1/ny.jpg";
 import nz from "./textures/envMaps/1/nz.jpg";
 
 import "./style.css";
-import _, { groupBy } from "lodash";
 
 const DRAG_THESHOLD = 0.02;
 
@@ -64,9 +63,6 @@ camera.position.x = 4;
 camera.position.y = 4;
 scene.add(camera);
 
-const axesHelper = new THREE.AxesHelper(5);
-scene.add(axesHelper);
-
 const setPerspective = () => {
   const { innerWidth, innerHeight } = window;
   renderer.setSize(innerWidth, innerHeight);
@@ -115,6 +111,7 @@ controller.enableDamping = true;
 // ray caster + mouse
 let isDragging = false;
 let selectedObject;
+let selectedNormal;
 const raycaster = new THREE.Raycaster();
 const mousePosition = new THREE.Vector2();
 const initialMousePosition = new THREE.Vector2();
@@ -126,24 +123,10 @@ const getSlice = (coordinate, value) => {
   return slice;
 };
 
-let slice = ["x", "x", "x", "x", "y"];
+const rotate = (sliceAxis, sliceNumber, direction, distance = Math.PI / 2) => {
+  const items = getSlice(sliceAxis, sliceNumber);
 
-const rotate = (object, perspective, dX, dY) => {
-  console.log({ object });
-  if (!object.face) return;
-  // todo learn more about vector math
-  const roundedNormal = object.face.normal.clone().round();
-  const draggedFace =
-    Math.abs(roundedNormal.x) === 1
-      ? "x"
-      : Math.abs(roundedNormal.y) === 1
-      ? "y"
-      : "z";
-  console.log(draggedFace);
-
-  const sliceAxis = slice[0];
-  const items = getSlice(sliceAxis, 1);
-  slice.push(slice.shift());
+  if (!items || items.length === 0) return;
   const rotateGroup = new THREE.Group();
   rotateGroup.add(...items);
   rotateGroup.rotateOnWorldAxis(
@@ -152,7 +135,7 @@ const rotate = (object, perspective, dX, dY) => {
       sliceAxis === "y" ? 1 : 0,
       sliceAxis === "z" ? 1 : 0
     ),
-    Math.PI / 2
+    distance * direction
   );
   rotateGroup.updateMatrixWorld();
   rotateGroup.children.slice().forEach((child) => {
@@ -178,6 +161,13 @@ const getMousePosition = (event) => ({
   y: -(event.clientY / window.innerHeight) * 2 + 1,
 });
 
+const getLongestComponent = (vector) => {
+  const x = Math.abs(vector.x);
+  const y = Math.abs(vector.y);
+  const z = Math.abs(vector.z);
+  return x > y && x > z ? "x" : y > z ? "y" : "z";
+};
+
 const onMouseMove = (event) => {
   const { x, y } = getMousePosition(event);
   // calculate pointer position in normalized device coordinates => (-1 to +1) for both components
@@ -185,12 +175,65 @@ const onMouseMove = (event) => {
   mousePosition.y = y;
 
   if (selectedObject && !isDragging) {
+    // transform the distance that the pointer moved into a 3d vector in the same space as the camera
     const dX = mousePosition.x - initialMousePosition.x;
     const dY = mousePosition.y - initialMousePosition.y;
-    const distance = Math.sqrt(dX * dX + dY * dY);
-    if (distance > DRAG_THESHOLD) {
+    const mouseMove = new THREE.Vector3(dX, dY, 0);
+    mouseMove.applyEuler(camera.rotation);
+
+    // if we've moved enough, rotate the face
+    if (mouseMove.length() > DRAG_THESHOLD) {
+      if (!selectedNormal || !selectedObject?.object) return;
       isDragging = true;
-      rotate(selectedObject, camera, dX, dY);
+
+      // determine the face that was clicked and remove its component from the mouseMove vector
+      const face = getLongestComponent(selectedNormal);
+      const limitingVector = new THREE.Vector3(1, 1, 1);
+      limitingVector[face] = 0;
+      const limitedMovement = mouseMove.clone();
+      limitedMovement.multiply(limitingVector);
+
+      // determine the axis of rotation
+      const draggedDirection = getLongestComponent(limitedMovement);
+      const draggedDistance = limitedMovement[draggedDirection];
+      // todo there has to be a "right" way to figure this out
+      let rotationAxis;
+      let rotationDirection =
+        -1 * Math.sign(draggedDistance) * Math.sign(selectedNormal[face]);
+      // NOTE sometimes we have to invert the direction of rotation
+      // I honestly don't know why. I suck at spacial reasoning, and this is just empirically determined
+      if (face === "x") {
+        if (draggedDirection === "y") {
+          rotationAxis = "z";
+          // see note above
+          rotationDirection *= -1;
+        } else {
+          rotationAxis = "y";
+        }
+      } else if (face === "y") {
+        if (draggedDirection === "x") {
+          rotationAxis = "z";
+        } else {
+          rotationAxis = "x";
+          // see note above
+          rotationDirection *= -1;
+        }
+      } else if (face === "z") {
+        if (draggedDirection === "x") {
+          rotationAxis = "y";
+          // see note above
+          rotationDirection *= -1;
+        } else {
+          rotationAxis = "x";
+        }
+      }
+
+      if (!rotationAxis) return;
+      rotate(
+        rotationAxis,
+        Math.round(selectedObject.object.position[rotationAxis]),
+        rotationDirection
+      );
     }
   }
 };
@@ -203,6 +246,10 @@ const onMouseDown = (e) => {
 
   selectedObject = getPointedObject();
   if (selectedObject) {
+    // get the clicked face
+    const roundedNormal = selectedObject?.face?.normal?.clone?.()?.round?.();
+    roundedNormal.applyEuler(selectedObject.object.rotation);
+    selectedNormal = roundedNormal;
     controller.enabled = false;
   }
 };
