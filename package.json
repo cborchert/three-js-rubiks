@@ -6,6 +6,7 @@
     "parcel": "^2.3.2"
   },
   "dependencies": {
+    "gsap": "^3.9.1",
     "three": "^0.138.3"
   },
   "scripts": {

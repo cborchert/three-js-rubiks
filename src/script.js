@@ -9,8 +9,10 @@ import ny from "./textures/envMaps/1/ny.jpg";
 import nz from "./textures/envMaps/1/nz.jpg";
 
 import "./style.css";
+import gsap from "gsap";
 
 const DRAG_THESHOLD = 0.02;
+const ANIMATION_DURATION_IN_SECONDS = 0.15;
 
 /**
  * Materials
@@ -121,19 +123,21 @@ const rotate = (sliceAxis, sliceNumber, direction, distance = Math.PI / 2) => {
   if (!items || items.length === 0) return;
   const rotateGroup = new THREE.Group();
   rotateGroup.add(...items);
-  rotateGroup.rotateOnWorldAxis(
-    new THREE.Vector3(
-      sliceAxis === "x" ? 1 : 0,
-      sliceAxis === "y" ? 1 : 0,
-      sliceAxis === "z" ? 1 : 0
-    ),
-    distance * direction
-  );
-  rotateGroup.updateMatrixWorld();
-  rotateGroup.children.slice().forEach((child) => {
-    rotateGroup.remove(child);
-    cubes.add(child);
-    child.applyMatrix4(rotateGroup.matrixWorld);
+  scene.add(rotateGroup);
+  // animate the rotation
+  gsap.to(rotateGroup.rotation, {
+    [sliceAxis]: distance * direction,
+    duration: ANIMATION_DURATION_IN_SECONDS,
+    onComplete: () => {
+      // after the rotation is complete, add each cube back into the parent and allow for new drag actions
+      rotateGroup.updateMatrixWorld();
+      rotateGroup.children.slice().forEach((child) => {
+        rotateGroup.remove(child);
+        cubes.add(child);
+        child.applyMatrix4(rotateGroup.matrixWorld);
+      });
+      isDragging = false;
+    },
   });
 };
 
@@ -251,7 +255,6 @@ window.addEventListener("pointerdown", onMouseDown);
 
 const onMouseUp = () => {
   controller.enabled = true;
-  isDragging = false;
   selectedObject = undefined;
 };
 window.addEventListener("pointerup", onMouseUp);
