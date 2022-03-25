@@ -1,18 +1,19 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-
-import px from "./textures/envMaps/1/px.jpg";
-import py from "./textures/envMaps/1/py.jpg";
-import pz from "./textures/envMaps/1/pz.jpg";
-import nx from "./textures/envMaps/1/nx.jpg";
-import ny from "./textures/envMaps/1/ny.jpg";
-import nz from "./textures/envMaps/1/nz.jpg";
-
-import "./style.css";
 import gsap from "gsap";
 
-const DRAG_THESHOLD = 0.02;
-const ANIMATION_DURATION_IN_SECONDS = 0.15;
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+
+import px from "./textures/envMaps/2/px.png";
+import py from "./textures/envMaps/2/py.png";
+import pz from "./textures/envMaps/2/pz.png";
+import nx from "./textures/envMaps/2/nx.png";
+import ny from "./textures/envMaps/2/ny.png";
+import nz from "./textures/envMaps/2/nz.png";
+
+import "./style.css";
+
+const DRAG_THESHOLD = 0.03;
+const ANIMATION_DURATION_IN_SECONDS = 0.25;
 
 /**
  * Materials
@@ -21,21 +22,29 @@ const ANIMATION_DURATION_IN_SECONDS = 0.15;
 const cubeTextureLoader = new THREE.CubeTextureLoader();
 const envMap = cubeTextureLoader.load([px, nx, py, ny, pz, nz]);
 
-const colors = [0xff0000, 0xff8855, 0xffffff, 0xffff00, 0x00ff00, 0x0000ff];
+const colors = [
+  0xdd0000, 0xff8855, 0xffffff, 0xdddd00, 0x00dd00, 0x0000dd, 0x333333,
+];
 const materialsProps = {
-  metalness: 0.8,
-  roughness: 0.1,
-  transparent: true,
-  opacity: 1,
+  metalness: 0.6,
+  roughness: 0.5,
+  flatShading: true,
   envMap,
 };
+const blackMaterial = new THREE.MeshStandardMaterial({
+  ...materialsProps,
+  color: colors[6],
+});
 const cubeMaterials = [
   new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[0] }), // right side
   new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[1] }), // left
   new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[2] }), // top
   new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[3] }), // bottom
   new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[4] }), // front
-  new THREE.MeshStandardMaterial({ ...materialsProps, color: colors[5] }), // back
+  new THREE.MeshStandardMaterial({
+    ...materialsProps,
+    color: colors[5],
+  }), // back
 ];
 
 /**
@@ -70,11 +79,12 @@ window.addEventListener("resize", setPerspective);
 setPerspective();
 
 // lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 
-const pointLight1 = new THREE.PointLight(0xffffff, 0.25);
-pointLight1.position.x = -100;
-pointLight1.position.y = 10;
+const pointLight1 = new THREE.PointLight(0xdddddd, 0.4);
+pointLight1.position.x = 0;
+pointLight1.position.y = 0;
+pointLight1.position.z = 100;
 
 scene.add(ambientLight, pointLight1);
 
@@ -82,13 +92,36 @@ scene.add(ambientLight, pointLight1);
  * Objects
  */
 const cubes = new THREE.Group();
-const geometry = new THREE.BoxGeometry(0.95, 0.95, 0.95, 100, 100, 100);
+const geometry = new THREE.BoxGeometry(0.95, 0.95, 0.95);
 for (let i = 0; i < 27; i++) {
-  const cube = new THREE.Mesh(geometry, cubeMaterials);
-  cube.special = i === 26;
-  cube.position.y = (i % 3) - 1;
-  cube.position.x = (Math.floor(i / 3) % 3) - 1;
-  cube.position.z = Math.floor(i / 9) - 1;
+  const x = (Math.floor(i / 3) % 3) - 1;
+  const y = (i % 3) - 1;
+  const z = Math.floor(i / 9) - 1;
+
+  // paint certain sides black
+  let currentCubeMaterials = [...cubeMaterials];
+  if (x < 1) {
+    currentCubeMaterials[0] = blackMaterial;
+  }
+  if (x > -1) {
+    currentCubeMaterials[1] = blackMaterial;
+  }
+  if (y < 1) {
+    currentCubeMaterials[2] = blackMaterial;
+  }
+  if (y > -1) {
+    currentCubeMaterials[3] = blackMaterial;
+  }
+  if (z < 1) {
+    currentCubeMaterials[4] = blackMaterial;
+  }
+  if (z > -1) {
+    currentCubeMaterials[5] = blackMaterial;
+  }
+  const cube = new THREE.Mesh(geometry, currentCubeMaterials);
+  cube.position.x = x;
+  cube.position.y = y;
+  cube.position.z = z;
   cubes.add(cube);
 }
 
