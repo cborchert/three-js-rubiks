@@ -83,7 +83,7 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
 
 const pointLight1 = new THREE.PointLight(0xdddddd, 0.2);
 pointLight1.position.x = 0;
-pointLight1.position.y = 0;
+pointLight1.position.y = 100;
 pointLight1.position.z = 100;
 
 scene.add(ambientLight, pointLight1);
